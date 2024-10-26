@@ -70,19 +70,13 @@ func Login(user string, pass string, id string) (string, error) {
 		return output, fmt.Errorf("Error al leer el MBR")
 	}
 
-	output += PrintMBR(TempMBR)
-	output += "-------------\n"
-
 	var index int = -1
 	for i := 0; i < 4; i++ {
 		if TempMBR.Particion[i].Size != 0 {
 			if strings.Contains(string(TempMBR.Particion[i].Id[:]), id) {
-				output += "Partition found\n"
 				if TempMBR.Particion[i].Status[0] == '1' {
-					output += "Partition is mounted\n"
 					index = i
 				} else {
-					output += "Partition is not mounted\n"
 					return output, fmt.Errorf("La partición no está montada")
 				}
 				break
@@ -91,7 +85,7 @@ func Login(user string, pass string, id string) (string, error) {
 	}
 
 	if index == -1 {
-		output += "Partition not found\n"
+		output += "No se encontró la partición\n"
 		return output, fmt.Errorf("No se encontró la partición con el ID proporcionado")
 	}
 
@@ -124,14 +118,14 @@ func Login(user string, pass string, id string) (string, error) {
 		}
 	}
 
-	output += fmt.Sprintf("Inode: %v\n", crrInode.I_block)
+	//output += fmt.Sprintf("Inode: %v\n", crrInode.I_block)
 
 	if login {
 		output += "Usuario logueado con éxito\n"
 		activeUser.Id = id
 		activeUser.User = user
 		activeUser.Password = pass
-		MarkPartitionAsLoggedIn(id)
+		output += MarkPartitionAsLoggedIn(id)
 		return "Inicio de sesión exitoso\n" + output, nil
 	}
 
@@ -140,7 +134,7 @@ func Login(user string, pass string, id string) (string, error) {
 }
 
 func InitSearch(path string, file *os.File, tempSuperblock Superblock) int32 {
-	fmt.Println("======Start BUSQUEDA INICIAL ======")
+	fmt.Println("-------------Busqueda Inicial--------------")
 	fmt.Println("path:", path)
 
 	TempStepsPath := strings.Split(path, "/")
@@ -156,7 +150,7 @@ func InitSearch(path string, file *os.File, tempSuperblock Superblock) int32 {
 		return -1
 	}
 
-	fmt.Println("======End BUSQUEDA INICIAL======")
+	fmt.Println("---------- Termina Busqueda Inicial ----------")
 
 	return SarchInodeByPath(StepsPath, Inode0, file, tempSuperblock)
 }
@@ -169,11 +163,12 @@ func pop(s *[]string) string {
 }
 
 func SarchInodeByPath(StepsPath []string, InodeP Inode, file *os.File, tempSuperblock Superblock) int32 {
-	fmt.Println("======Start BUSQUEDA INODO POR PATH======")
+	fmt.Println("-----------------BUSQUEDA INODO POR PATH-----------------")
+
 	index := int32(0)
 	SearchedName := strings.Replace(pop(&StepsPath), " ", "", -1)
 
-	fmt.Println("========== SearchedName:", SearchedName)
+	fmt.Println("--> SearchedName:", SearchedName)
 
 	for _, block := range InodeP.I_block {
 		if block != -1 {
@@ -193,10 +188,10 @@ func SarchInodeByPath(StepsPath []string, InodeP Inode, file *os.File, tempSuper
 
 						fmt.Println("len(StepsPath)", len(StepsPath), "StepsPath", StepsPath)
 						if len(StepsPath) == 0 {
-							fmt.Println("Folder found======")
+							fmt.Println("Folder found----------------")
 							return folder.B_inodo
 						} else {
-							fmt.Println("NextInode======")
+							fmt.Println("NextInode----------------")
 							var NextInode Inode
 							if err := ReadObject(file, &NextInode, int64(tempSuperblock.S_inode_start+folder.B_inodo*int32(binary.Size(Inode{})))); err != nil {
 								return -1
@@ -213,12 +208,12 @@ func SarchInodeByPath(StepsPath []string, InodeP Inode, file *os.File, tempSuper
 		index++
 	}
 
-	fmt.Println("======End BUSQUEDA INODO POR PATH======")
+	fmt.Println("-----------------TERMINA BUSQUEDA INODO POR PATH-----------------")
 	return 0
 }
 
 func GetInodeFileData(Inode Inode, file *os.File, tempSuperblock Superblock) string {
-	fmt.Println("======Start CONTENIDO DEL BLOQUE======")
+	fmt.Println("-----------------CONTENIDO DEL BLOQUE-----------------")
 	index := int32(0)
 
 	var content string
@@ -241,7 +236,7 @@ func GetInodeFileData(Inode Inode, file *os.File, tempSuperblock Superblock) str
 		index++
 	}
 
-	fmt.Println("======End CONTENIDO DEL BLOQUE======")
+	fmt.Println("-----------------TERMINA CONTENIDO DEL BLOQUE-----------------")
 	return content
 }
 
@@ -255,7 +250,7 @@ func Logout() (string, error) {
 		output += "No hay ninguna sesión activa para cerrar\n"
 		return output, fmt.Errorf("No hay ninguna sesión activa")
 	}
-	MarkPartitionAsLoggedOut(activeUser.Id)
+	output += MarkPartitionAsLoggedOut(activeUser.Id)
 	output += fmt.Sprintf("Se ha cerrado la sesión del usuario: %s\n", activeUser.User)
 	activeUser = ActiveUser{}
 

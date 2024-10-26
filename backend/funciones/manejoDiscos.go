@@ -385,30 +385,40 @@ func GetMountedPartitions() map[string][]particionMount {
 	return particionesMontadas
 }
 
-func MarkPartitionAsLoggedIn(id string) {
+func MarkPartitionAsLoggedIn(id string) string {
+
+	var output string
+
 	for diskID, partitions := range particionesMontadas {
 		for i, partition := range partitions {
 			if partition.ID == id {
 				particionesMontadas[diskID][i].LoggedIn = true
 				fmt.Printf("Partición con ID %s marcada como logueada.\n", id)
-				return
+				output += fmt.Sprintf("-> Partición con ID %s marcada como logueada.\n", id)
+				return output
 			}
 		}
 	}
 	fmt.Printf("No se encontró la partición con ID %s para marcarla como logueada.\n", id)
+	output += fmt.Sprintf("-> No se encontró la partición con ID %s para marcarla como logueada.\n", id)
+	return output
 }
 
-func MarkPartitionAsLoggedOut(id string) {
+func MarkPartitionAsLoggedOut(id string) string {
+	var output string
 	for diskID, partitions := range particionesMontadas {
 		for i, partition := range partitions {
 			if partition.ID == id {
 				particionesMontadas[diskID][i].LoggedIn = false
 				fmt.Printf("Partición con ID %s marcada como deslogueada.\n", id)
-				return
+				output += fmt.Sprintf("-> Partición con ID %s marcada como deslogueada.\n", id)
+				return output
 			}
 		}
 	}
 	fmt.Printf("No se encontró la partición con ID %s para marcarla como deslogueada.\n", id)
+	output += fmt.Sprintf("-> No se encontró la partición con ID %s para marcarla como deslogueada.\n", id)
+	return output
 }
 
 func CleanMountedPartitions() {
@@ -492,15 +502,15 @@ func Mount(path string, nombre string) string {
 	carnet := "202201318"
 	digitos := carnet[len(carnet)-2:]
 	numeroParticion := len(indicePMount) + 1
-	partitionID := fmt.Sprintf("%s%d%s", digitos, numeroParticion, strings.ToUpper(string(letter)))
+	partitionID := fmt.Sprintf("%s%d%s", digitos, numeroParticion, strings.ToLower(string(letter)))
 
 	partition.Status[0] = '1'
-	copy(partition.Id[:], partitionID)
+	copy(partition.Id[:], []byte(strings.ToLower(partitionID)))
 	TempMBR.Particion[indiceP] = partition
 	particionesMontadas[diskID] = append(particionesMontadas[diskID], particionMount{
 		Path:   path,
 		Name:   nombre,
-		ID:     partitionID,
+		ID:     strings.ToLower(partitionID),
 		Status: '1',
 	})
 

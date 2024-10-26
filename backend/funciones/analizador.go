@@ -348,7 +348,7 @@ func fn_mkfs(input string) string {
 	fmt.Println("Ejecutando mkfs...")
 	fs := flag.NewFlagSet("mkfs", flag.ExitOnError)
 	id := fs.String("id", "", "Id")
-	type_ := fs.String("type", "", "Tipo")
+	type_ := fs.String("type", "full", "Tipo")
 	fs_ := fs.String("fs", "2fs", "Sistema de archivos")
 
 	matches := re.FindAllStringSubmatch(input, -1)
@@ -359,13 +359,12 @@ func fn_mkfs(input string) string {
 		fs.Set(flagName, flagValue)
 	}
 
+	*id = strings.ToLower(*id)
+	*type_ = strings.ToLower(*type_)
+	*fs_ = strings.ToLower(*fs_)
+
 	if *id == "" {
 		output += "Error: id es un parámetro obligatorio.\n"
-		return output
-	}
-
-	if *type_ == "" {
-		output += "Error: type es un parámetro obligatorio.\n"
 		return output
 	}
 
@@ -397,6 +396,8 @@ func fn_login(input string) string {
 		flagValue := strings.Trim(match[2], "\"")
 		fs.Set(flagName, flagValue)
 	}
+
+	*id = strings.ToLower(*id)
 
 	if *user == "" || *pass == "" || *id == "" {
 		output += "Error: Los campos user, pass e id son obligatorios.\n"

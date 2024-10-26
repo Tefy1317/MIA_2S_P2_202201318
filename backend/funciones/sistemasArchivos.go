@@ -111,8 +111,8 @@ func Mkfs(id string, type_ string, fs_ string) string {
 	newSuperblock.S_blocks_count = 3 * n
 	newSuperblock.S_free_blocks_count = 3*n - 2
 	newSuperblock.S_free_inodes_count = n - 2
-	copy(newSuperblock.S_mtime[:], "23/08/2024")
-	copy(newSuperblock.S_umtime[:], "23/08/2024")
+	copy(newSuperblock.S_mtime[:], "26/10/2024")
+	copy(newSuperblock.S_umtime[:], "26/10/2024")
 	newSuperblock.S_mnt_count = 1
 	newSuperblock.S_magic = 0xEF53
 	newSuperblock.S_inode_size = int32(binary.Size(Inode{}))
@@ -124,9 +124,9 @@ func Mkfs(id string, type_ string, fs_ string) string {
 	newSuperblock.S_block_start = newSuperblock.S_inode_start + n*newSuperblock.S_inode_size
 
 	if fs_ == "2fs" {
-		create_ext2(n, TempMBR.Particion[index], newSuperblock, "23/08/2024", file)
+		output += create_ext2(n, TempMBR.Particion[index], newSuperblock, "26/10/2024", file)
 	} else if fs_ == "3fs" {
-		create_ext3(n, TempMBR.Particion[index], newSuperblock, "23/08/2024", file)
+		output += create_ext3(n, TempMBR.Particion[index], newSuperblock, "26/10/2024", file)
 	}
 
 	defer file.Close()
@@ -137,145 +137,177 @@ func Mkfs(id string, type_ string, fs_ string) string {
 	return output
 }
 
-func create_ext2(n int32, partition Particion, newSuperblock Superblock, date string, file *os.File) {
-	fmt.Println("======Start CREATE EXT2======")
+func create_ext2(n int32, partition Particion, newSuperblock Superblock, date string, file *os.File) string {
+	var output string
+
+	output += fmt.Sprintf("   \n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += fmt.Sprintf("Creando EXT2...\n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += "INODOS: " + fmt.Sprint(n) + "\n"
+
+	fmt.Println("----------Creando EXT2----------")
 	fmt.Println("INODOS:", n)
 
-	// Imprimir Superblock inicial
 	PrintSuperblock(newSuperblock)
 	fmt.Println("Date:", date)
 
-	// Escribe los bitmaps de inodos y bloques en el archivo
 	for i := int32(0); i < n; i++ {
 		if err := WriteObject(file, byte(0), int64(newSuperblock.S_bm_inode_start+i)); err != nil {
 			fmt.Println("Error: ", err)
-			return
+			output += "Error: " + fmt.Sprint(err) + "\n"
+			return output
 		}
 	}
 
 	for i := int32(0); i < 3*n; i++ {
 		if err := WriteObject(file, byte(0), int64(newSuperblock.S_bm_block_start+i)); err != nil {
 			fmt.Println("Error: ", err)
-			return
+			output += "Error: " + fmt.Sprint(err) + "\n"
+			return output
 		}
 	}
 
-	// Inicializa inodos y bloques con valores predeterminados
 	if err := initInodesAndBlocks(n, newSuperblock, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 
-	// Crea la carpeta raíz y el archivo users.txt
 	if err := createRootAndUsersFile(newSuperblock, date, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 
-	// Escribe el superbloque actualizado al archivo
 	if err := WriteObject(file, newSuperblock, int64(partition.Start)); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 
-	// Marca los primeros inodos y bloques como usados
 	if err := markUsedInodesAndBlocks(newSuperblock, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 
-	// Imprimir Fileblocks
 	for i := int32(0); i < 1; i++ {
 		var fileblock Fileblock
 		offset := int64(newSuperblock.S_block_start + int32(binary.Size(Folderblock{})) + i*int32(binary.Size(Fileblock{})))
 		if err := ReadObject(file, &fileblock, offset); err != nil {
 			fmt.Println("Error al leer Fileblock: ", err)
-			return
+			output += "Error al leer Fileblock: " + fmt.Sprint(err) + "\n"
+			return output
 		}
+
 		PrintFileblock(fileblock)
 	}
 
-	/*
-		// Imprimir el Superblock final
-		 PrintSuperblock(newSuperblock)
-	*/
+	fmt.Println("----------EXT2 Creado----------")
 
-	fmt.Println("======End CREATE EXT2======")
+	output += fmt.Sprintf("   \n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += fmt.Sprintf("EXT2 Creado :)\n")
+	output += fmt.Sprintf("-----------------------------\n")
+	return output
 }
 
-func create_ext3(n int32, partition Particion, newSuperblock Superblock, date string, file *os.File) {
-	fmt.Println("======Start CREATE EXT3======")
+func create_ext3(n int32, partition Particion, newSuperblock Superblock, date string, file *os.File) string {
+
+	var output string
+
+	output += fmt.Sprintf("   \n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += fmt.Sprintf("Creando EXT3...\n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += "INODOS: " + fmt.Sprint(n) + "\n"
+
+	fmt.Println("------Creando EXT3------")
 	fmt.Println("INODOS:", n)
 
-	// Imprimir Superblock inicial
 	PrintSuperblock(newSuperblock)
 	fmt.Println("Date:", date)
 
-	// Inicializa el journaling
 	if err := initJournaling(newSuperblock, file); err != nil {
 		fmt.Println("Error al inicializar el Journaling: ", err)
-		return
+		output += "Error al inicializar el Journaling: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 	fmt.Println("Journaling inicializado correctamente.")
+	output += "Journaling inicializado correctamente.\n"
 
-	// Escribe los bitmaps de inodos y bloques en el archivo
 	for i := int32(0); i < n; i++ {
 		if err := WriteObject(file, byte(0), int64(newSuperblock.S_bm_inode_start+i)); err != nil {
 			fmt.Println("Error: ", err)
-			return
+			output += "Error: " + fmt.Sprint(err) + "\n"
+			return output
 		}
 	}
 	fmt.Println("Bitmap de inodos escrito correctamente.")
+	output += "Bitmap de inodos escrito correctamente.\n"
 
 	for i := int32(0); i < 3*n; i++ {
 		if err := WriteObject(file, byte(0), int64(newSuperblock.S_bm_block_start+i)); err != nil {
 			fmt.Println("Error: ", err)
-			return
+			output += "Error: " + fmt.Sprint(err) + "\n"
+			return output
 		}
 	}
 	fmt.Println("Bitmap de bloques escrito correctamente.")
+	output += "Bitmap de bloques escrito correctamente.\n"
 
-	// Inicializa inodos y bloques con valores predeterminados
 	if err := initInodesAndBlocks(n, newSuperblock, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 	fmt.Println("Inodos y bloques inicializados correctamente.")
+	output += "Inodos y bloques inicializados correctamente.\n"
 
-	// Crea la carpeta raíz y el archivo users.txt
 	if err := createRootAndUsersFile(newSuperblock, date, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 	fmt.Println("Carpeta raíz y archivo users.txt creados correctamente.")
+	output += "Carpeta raíz y archivo users.txt creados correctamente.\n"
 
-	// Escribe el superbloque actualizado al archivo
 	if err := WriteObject(file, newSuperblock, int64(partition.Start)); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 	fmt.Println("Superbloque escrito correctamente.")
+	output += "Superbloque escrito correctamente.\n"
 
-	// Marca los primeros inodos y bloques como usados
 	if err := markUsedInodesAndBlocks(newSuperblock, file); err != nil {
 		fmt.Println("Error: ", err)
-		return
+		output += "Error: " + fmt.Sprint(err) + "\n"
+		return output
 	}
 	fmt.Println("Inodos y bloques iniciales marcados como usados correctamente.")
+	output += "Inodos y bloques iniciales marcados como usados correctamente.\n"
 
-	// Imprimir Fileblocks (similar a EXT2 para verificación)
 	for i := int32(0); i < 1; i++ {
 		var fileblock Fileblock
 		offset := int64(newSuperblock.S_block_start + int32(binary.Size(Folderblock{})) + i*int32(binary.Size(Fileblock{})))
 		if err := ReadObject(file, &fileblock, offset); err != nil {
 			fmt.Println("Error al leer Fileblock: ", err)
-			return
+			output += "Error al leer Fileblock: " + fmt.Sprint(err) + "\n"
+			return output
 		}
 		PrintFileblock(fileblock)
 	}
-	fmt.Println("Fileblocks impresos correctamente.")
 
-	fmt.Println("======End CREATE EXT3======")
+	fmt.Println("Fileblocks impresos correctamente.")
+	fmt.Println("------EXT3 Creado------")
+
+	output += fmt.Sprintf("   \n")
+	output += fmt.Sprintf("-----------------------------\n")
+	output += fmt.Sprintf("EXT3 Creado :)\n")
+	output += fmt.Sprintf("-----------------------------\n")
+	return output
 }
 
 func initJournaling(newSuperblock Superblock, file *os.File) error {
