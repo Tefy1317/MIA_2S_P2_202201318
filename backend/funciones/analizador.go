@@ -410,6 +410,8 @@ func fn_login(input string) string {
 		return output
 	}
 
+	output += "Inicio de sesión exitoso"
+
 	output += mensajes
 	return output
 }

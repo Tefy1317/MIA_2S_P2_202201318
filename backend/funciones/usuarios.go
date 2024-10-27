@@ -251,7 +251,9 @@ func Logout() (string, error) {
 		return output, fmt.Errorf("No hay ninguna sesión activa")
 	}
 	output += MarkPartitionAsLoggedOut(activeUser.Id)
-	output += fmt.Sprintf("Se ha cerrado la sesión del usuario: %s\n", activeUser.User)
+	output += fmt.Sprintf("Sesión cerrada exitosamente")
+	output += fmt.Sprintf("Usuario: %s\n", activeUser.User)
+	fmt.Println("Sesión cerrada exitosamente")
 	activeUser = ActiveUser{}
 
 	return output, nil
